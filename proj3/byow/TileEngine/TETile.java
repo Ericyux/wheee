@@ -4,7 +4,7 @@ import java.awt.Color;
 import java.util.Arrays;
 import java.util.Random;
 
-import edu.princeton.cs.algs4.StdDraw;
+import byow.Core.*;
 import byow.Core.RandomUtils;
 
 /**

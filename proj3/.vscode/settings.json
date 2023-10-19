@@ -1,9 +1,0 @@
-{
-    "java.project.sourcePaths": [
-        "."
-    ],
-    "java.project.referencedLibraries": [
-        "lib/**/*.jar",
-        ".idea\\lib\\stdlib.jar"
-    ]
-}

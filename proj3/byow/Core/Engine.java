@@ -3,19 +3,19 @@ package byow.Core;
 import byow.TileEngine.TERenderer;
 import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
+import java.util.Queue;
+import java.util.LinkedList;
+import java.util.Collections;
 
 import java.awt.*;
-import java.util.List;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
-import java.util.Map;
-import java.util.Collections;
-import java.util.PriorityQueue;
 
 public class Engine {
+    private Graph kruskalsTree;
     public static final File CWD = new File(System.getProperty("user.dir"));
     public static final File SAVE_DATA = Utils.join(CWD, "save_data.txt");
     public static final File SEED = Utils.join(CWD, "seed.txt");
@@ -172,6 +172,7 @@ public class Engine {
             }
         }
         graph = graph.kruskals();
+        kruskalsTree = graph;  // store the tree
         for (int i : graph.getAllVertices()) {
             for (int j : graph.getAllVertices()) {
                 if (RandomUtils.bernoulli(rand, PROBABILITY)) {
@@ -296,64 +297,13 @@ public class Engine {
                 avatar.x++;
             }
         }
-        if (c == 'f' || c == 'F') {
-            StdDraw.clear();
-            StdDraw.setFont(new Font("Monaco", Font.BOLD, FONT_SIZE));
-            StdDraw.text(WIDTH / 2, HEIGHT / 2 + 5, "Calculating Path...");
-            List<Coordinate> path = findPathAStar(world, avatar, redSquare);
-            if (path != null) {
-                // Print the path
-                System.out.println("Path from avatar to red square:");
-                for (Coordinate step : path) {
-                    System.out.println("(" + step.getX() + ", " + step.getY() + ")");
-                }
 
-                // Execute the path
-                for (Coordinate step : path) {
-                    int deltaX = step.getX() - avatar.getX();
-                    int deltaY = step.getY() - avatar.getY();
-
-                    if (deltaX == 1) {  // Move right
-                        TETile nextTile = world[avatar.x + 1][avatar.y];
-                        if (nextTile.equals(Tileset.FLOOR) || "red square".equals(nextTile.description())) {
-                            world[avatar.x][avatar.y] = Tileset.FLOOR;
-                            world[avatar.x + 1][avatar.y] = Tileset.AVATAR;
-                            avatar.x++;
-                        }
-                    } else if (deltaX == -1) {  // Move left
-                        TETile nextTile = world[avatar.x - 1][avatar.y];
-                        if (nextTile.equals(Tileset.FLOOR) || "red square".equals(nextTile.description())) {
-                            world[avatar.x][avatar.y] = Tileset.FLOOR;
-                            world[avatar.x - 1][avatar.y] = Tileset.AVATAR;
-                            avatar.x--;
-                        }
-                    } else if (deltaY == 1) {  // Move up
-                        TETile nextTile = world[avatar.x][avatar.y + 1];
-                        if (nextTile.equals(Tileset.FLOOR) || "red square".equals(nextTile.description())) {
-                            world[avatar.x][avatar.y] = Tileset.FLOOR;
-                            world[avatar.x][avatar.y + 1] = Tileset.AVATAR;
-                            avatar.y++;
-                        }
-                    } else if (deltaY == -1) {  // Move down
-                        TETile nextTile = world[avatar.x][avatar.y - 1];
-                        if (nextTile.equals(Tileset.FLOOR) || "red square".equals(nextTile.description())) {
-                            world[avatar.x][avatar.y] = Tileset.FLOOR;
-                            world[avatar.x][avatar.y - 1] = Tileset.AVATAR;
-                            avatar.y--;
-                        }
-                    }
-
-                    // Render the updated frame to visualize the movement of the avatar
-                    ter.renderFrame(world);
-
-                    // Optional: Introduce a delay between movements for smoother visualization
-                    StdDraw.pause(100);
-
-                    // Check if avatar has reached the red square
-                    if (avatar.x == redSquare.x && avatar.y == redSquare.y) {
-                        System.exit(0);  // Exit the program
-                    }
-                }
+        if (c == 'b' || c == 'B') {
+            ArrayList<Coordinate> path = bfsShortestPath(avatar, redSquare);
+            for (Coordinate step : path) {
+                // Update world to move the avatar to the new step
+                moveAvatarToCoordinate(world, avatar, step);
+                ter.renderFrame(world);
             }
         }
 
@@ -441,83 +391,6 @@ public class Engine {
                 ter.renderFrame(world);
             }
         }
-    }
-
-    private double heuristic(Coordinate a, Coordinate b) {
-        return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2));
-    }
-
-    public List<Coordinate> findPathAStar(TETile[][] world, Coordinate start, Coordinate goal) {
-        PriorityQueue<Node> frontier = new PriorityQueue<>();
-        frontier.add(new Node(start, null, 0, heuristic(start, goal)));
-        int maxIterations = WIDTH * HEIGHT; // an estimate for the max number of steps
-        int iterations = 0;
-
-        Map<Coordinate, Node> visitedNodes = new HashMap<>();
-        visitedNodes.put(start, frontier.peek());
-
-        while (!frontier.isEmpty()) {
-            Node current = frontier.poll();
-
-            iterations++;
-
-            double progress = (double) iterations / maxIterations;
-            int progressBarWidth = WIDTH / 4;
-            int progressBarHeight = HEIGHT / 30;
-            int startX = (WIDTH - progressBarWidth) / 2;
-            int startY = HEIGHT / 2 - progressBarHeight;
-
-            // Draw the outer rectangle (border of the progress bar)
-            StdDraw.setPenColor(StdDraw.BLACK);
-            StdDraw.rectangle(startX + progressBarWidth / 2, startY + progressBarHeight / 2, progressBarWidth / 2, progressBarHeight / 2);
-
-            // Bound the progress between 0 and 1
-            progress = Math.min(Math.max(0, progress), 1);
-
-            // Calculate the filled rectangle's width based on progress
-            double filledWidth = progress * progressBarWidth;
-
-            // Draw the inner filled rectangle
-            StdDraw.setPenColor(StdDraw.BLUE);
-            StdDraw.filledRectangle(startX + filledWidth / 2, startY + progressBarHeight / 2, filledWidth / 2, progressBarHeight / 2);
-            StdDraw.show();
-
-            if (current.coord.equals(goal)) {
-                List<Coordinate> path = new ArrayList<>();
-                while (current != null) {
-                    path.add(current.coord);
-                    current = current.parent;
-                }
-                Collections.reverse(path);
-                return path;
-            }
-
-            // Check neighboring tiles
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    if (dx == 0 && dy == 0) continue; // Skip the current tile
-
-                    int newX = current.coord.getX() + dx;
-                    int newY = current.coord.getY() + dy;
-
-                    if (newX >= 0 && newX < world.length && newY >= 0 && newY < world[0].length &&
-                            (world[newX][newY].equals(Tileset.FLOOR) || world[newX][newY].description().equals("red square"))) {
-                        Coordinate neighborCoord = new Coordinate(newX, newY);
-                        double newCost = current.costFromStart + 1;
-
-                        if (!visitedNodes.containsKey(neighborCoord) || newCost < visitedNodes.get(neighborCoord).costFromStart) {
-                            double heuristicCost = heuristic(neighborCoord, goal);
-                            Node neighborNode = new Node(neighborCoord, current, newCost, heuristicCost);
-                            frontier.add(neighborNode);
-
-                            visitedNodes.put(neighborCoord, neighborNode);
-                        }
-                    }
-                }
-            }
-        }
-
-        return null; // No path found
     }
 
     public Coordinate getFloorTile(TETile[][] world) {
@@ -669,6 +542,94 @@ public class Engine {
         }
         return false;
     }
+    private ArrayList<Coordinate> bfsShortestPath(Coordinate start, Coordinate goal) {
+        // 1. Check if start and goal are valid
+        if (kruskalsTree.containsVertex(coordinateToVertex(start)) == false ||
+                kruskalsTree.containsVertex(coordinateToVertex(goal)) == false) {
+            System.out.println("Start or Goal is not valid.");
+            return null;
+        }
+
+        Queue<Coordinate> queue = new LinkedList<>();
+        HashMap<Coordinate, Coordinate> cameFrom = new HashMap<>();
+        ArrayList<Coordinate> path = new ArrayList<>();
+
+        queue.add(start);
+        cameFrom.put(start, null);
+
+        while (!queue.isEmpty()) {
+            Coordinate current = queue.poll();
+
+            // 2. Print the size of the queue
+            System.out.println("Queue size: " + queue.size());
+
+            if (current.equals(goal)) {
+                // 3. Print when we find the goal
+                System.out.println("Found the goal!");
+
+                while (current != null) {
+                    path.add(current);
+                    current = cameFrom.get(current);
+                }
+                Collections.reverse(path);
+                return path;
+            }
+
+            ArrayList<Coordinate> neighbors = getValidNeighbors(current);
+
+            for (Coordinate neighbor : neighbors) {
+                if (!cameFrom.containsKey(neighbor)) {
+                    queue.add(neighbor);
+                    cameFrom.put(neighbor, current);
+                }
+            }
+        }
+
+        System.out.println("Couldn't find a path to the goal.");
+        return null;
+    }
+
+
+    private ArrayList<Coordinate> getValidNeighbors(Coordinate coord) {
+        ArrayList<Coordinate> neighbors = new ArrayList<>();
+
+        int[][] directions = {
+                {-1, 0},  // Left
+                {1, 0},   // Right
+                {0, -1},  // Down
+                {0, 1}    // Up
+        };
+
+        for (int[] dir : directions) {
+            int x = coord.x + dir[0];
+            int y = coord.y + dir[1];
+
+            // Check if the coordinates are valid and correspond to a floor tile
+            if (isValidCoordinate(x, y) && kruskalsTree.containsVertex(coordinateToVertex(new Coordinate(x, y)))) {
+                neighbors.add(new Coordinate(x, y));
+            }
+
+        }
+
+        return neighbors;
+    }
+
+    private boolean isValidCoordinate(int x, int y) {
+        return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
+    }
+
+    public int coordinateToVertex(Coordinate c) {
+        int maxWidth = WIDTH;
+        return c.y * maxWidth + c.x;
+    }
+
+    private void moveAvatarToCoordinate(TETile[][] world, Coordinate avatar, Coordinate step) {
+        // Update world to move the avatar from its current position to step
+        world[avatar.x][avatar.y] = Tileset.FLOOR;
+        avatar.x = step.x;
+        avatar.y = step.y;
+        world[avatar.x][avatar.y] = Tileset.AVATAR;
+    }
 
     public class Coordinate implements Serializable {
         private int x;
@@ -692,25 +653,6 @@ public class Engine {
 
         public void setY(int y) {
             this.y = y;
-        }
-    }
-
-    class Node implements Comparable<Node> {
-        Coordinate coord;
-        Node parent;
-        double costFromStart;
-        double totalCost;
-
-        public Node(Coordinate coord, Node parent, double costFromStart, double heuristicCost) {
-            this.coord = coord;
-            this.parent = parent;
-            this.costFromStart = costFromStart;
-            this.totalCost = costFromStart + heuristicCost;
-        }
-
-        @Override
-        public int compareTo(Node other) {
-            return Double.compare(this.totalCost, other.totalCost);
         }
     }
 }

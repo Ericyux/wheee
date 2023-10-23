@@ -1,11 +1,4 @@
-# Build Your Own World Design Document
+# CSA Project
 
 **Partner 1: Eric Xiao**
-
-
-## Classes and Data Structures
-
-## Algorithms
-Kruskal's Algorithm
-
-## Persistence
+**Partner 2: Mohit Varikuti**

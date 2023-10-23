@@ -55,10 +55,8 @@ public class Engine {
         StdDraw.setPenColor(Color.white);
         Font f = StdDraw.getFont();
         StdDraw.setFont(new Font("Monaco", Font.BOLD, FONT_SIZE));
-        StdDraw.text(WIDTH / 2, HEIGHT * 7 / 8, "CS61BL Project 3");
-        StdDraw.text(WIDTH / 2, HEIGHT * 5 / 8, "Replay (R)");
+        StdDraw.text(WIDTH / 2, HEIGHT * 7 / 8, "CSA Project 5");
         StdDraw.text(WIDTH / 2, HEIGHT * 1 / 2, "New World (N)");
-        StdDraw.text(WIDTH / 2, HEIGHT * 3 / 8, "Load Game (L)");
         StdDraw.text(WIDTH / 2, HEIGHT * 2 / 8, "Quit (Q)");
         StdDraw.show();
         while (true) {
